@@ -1,3 +1,6 @@
+use actix_session::config::PersistentSession;
+use actix_web::cookie::time::Duration;
+use actix_web::cookie::Key;
 use actix_web::web;
 use actix_web::HttpResponse;
 use futures::StreamExt as _;
@@ -121,10 +124,16 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .wrap(actix_web::middleware::Logger::default())
             .wrap(
-                actix_session::CookieSession::signed(&session_key)
-                    .secure(false)
-                    .name(SESSION_NAME)
-                    .max_age(3600),
+                actix_session::SessionMiddleware::builder(
+                    actix_session::storage::CookieSessionStore::default(),
+                    Key::from(&session_key),
+                )
+                .cookie_name(SESSION_NAME.to_string())
+                .cookie_secure(false)
+                .session_lifecycle(
+                    PersistentSession::default().session_ttl(Duration::seconds(3600)),
+                )
+                .build(),
             )
             .route("/initialize", web::post().to(initialize))
             .route("/login", web::post().to(login))
@@ -1396,6 +1405,7 @@ async fn submit_assignment(
     let mut file = None;
     while let Some(field) = payload.next().await {
         let field = field.map_err(|_| actix_web::error::ErrorBadRequest("Invalid file."))?;
+
         if let Some(content_disposition) = field.content_disposition() {
             if let Some(name) = content_disposition.get_name() {
                 if name == "file" {
