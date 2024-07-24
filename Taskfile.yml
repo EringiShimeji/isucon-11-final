@@ -5,8 +5,8 @@ version: "3"
 vars:
   # Frequently changed
   SERVICES: mysql nginx
-  REPO_DIR: /home/isucon/repo
-  SRC_DIR: /home/isucon/repo/app/rust
+  REPO_DIR: /home/isucon/isucon-11-final
+  SRC_DIR: /home/isucon/isucon-11-final/app/rust
 
   # Rarely changed
 
