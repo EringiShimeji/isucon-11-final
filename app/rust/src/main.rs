@@ -219,6 +219,8 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
         return Err(actix_web::error::ErrorInternalServerError(""));
     }
 
+    let _ = reqwest::get("http://localhost:9000/api/group/collect").await;
+
     Ok(HttpResponse::Ok().json(InitializeResponse { language: "rust" }))
 }
 
