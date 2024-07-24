@@ -773,7 +773,7 @@ async fn get_grades(
         // 講義毎の成績計算処理
         let mut my_total_score = 0;
         let class_scores = sqlx::query!(
-            "SELECT c.id, c.part, c.title, COUNT(*) AS count
+            "SELECT c.id, c.part, c.title, COUNT(s.score) AS count
             FROM classes AS c
                 LEFT JOIN submissions AS s ON c.id = s.class_id
             WHERE
