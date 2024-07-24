@@ -50,7 +50,7 @@ async fn main() -> std::io::Result<()> {
         )
         .ssl_mode(sqlx::mysql::MySqlSslMode::Disabled);
     let pool = sqlx::mysql::MySqlPoolOptions::new()
-        .max_connections(10)
+        .max_connections(300)
         .after_connect(|conn| {
             Box::pin(async move {
                 conn.execute("set time_zone = '+00:00'").await?;
