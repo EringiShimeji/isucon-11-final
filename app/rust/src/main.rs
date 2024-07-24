@@ -789,7 +789,8 @@ async fn get_grades(
                 LEFT JOIN submissions AS s ON c.id = s.class_id
             WHERE
                 c.course_id = ?
-            GROUP BY c.id",
+            GROUP BY c.id
+            ORDER BY c.part DESC",
             course.id
         )
         .fetch_all(pool.as_ref())
