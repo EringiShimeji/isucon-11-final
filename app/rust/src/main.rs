@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use actix_session::config::PersistentSession;
 use actix_web::cookie::time::Duration;
 use actix_web::cookie::Key;
@@ -763,45 +765,61 @@ async fn get_grades(
         .map_err(SqlxError)?;
 
         // 講義毎の成績計算処理
-        let mut class_scores = Vec::with_capacity(classes.len());
         let mut my_total_score = 0;
-        for class in classes {
-            let submissions_count: i64 =
-                sqlx::query_scalar("SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?")
-                    .bind(&class.id)
-                    .fetch_one(pool.as_ref())
-                    .await
-                    .map_err(SqlxError)?;
+        let submissions_counts: HashMap<String, i64> = sqlx::query!(
+            "SELECT c.id, COUNT(*) AS count
+            FROM classes AS c
+                LEFT JOIN submissions AS s ON c.id = s.class_id
+            WHERE
+                c.course_id = ?
+            GROUP BY c.id",
+            course.id
+        )
+        .fetch_all(pool.as_ref())
+        .await
+        .map_err(SqlxError)?
+        .into_iter()
+        .map(|r| (r.id, r.count))
+        .collect();
 
-            let my_score: Option<Option<u8>> = sqlx::query_scalar(concat!(
-                "SELECT `submissions`.`score` FROM `submissions`",
-                " WHERE `user_id` = ? AND `class_id` = ?"
-            ))
-            .bind(&user_id)
-            .bind(&class.id)
-            .fetch_optional(pool.as_ref())
-            .await
-            .map_err(SqlxError)?;
-            if let Some(Some(my_score)) = my_score {
+        let class_scores = sqlx::query!(
+            "SELECT c.id, c.part, c.title, s.score
+            FROM classes AS c
+                LEFT JOIN submissions AS s ON c.id = s.class_id
+            WHERE
+                c.course_id = ?
+                AND s.user_id = ?",
+            course.id,
+            user_id,
+        )
+        .fetch_all(pool.as_ref())
+        .await
+        .map_err(SqlxError)?
+        .into_iter()
+        .map(|r| {
+            let submitters = submissions_counts.get(&r.id).copied().unwrap_or(0);
+
+            if let Some(my_score) = r.score {
                 let my_score = my_score as i64;
                 my_total_score += my_score;
-                class_scores.push(ClassScore {
-                    class_id: class.id,
-                    part: class.part,
-                    title: class.title,
+                ClassScore {
+                    class_id: r.id,
+                    part: r.part,
+                    title: r.title,
                     score: Some(my_score),
-                    submitters: submissions_count,
-                });
+                    submitters,
+                }
             } else {
-                class_scores.push(ClassScore {
-                    class_id: class.id,
-                    part: class.part,
-                    title: class.title,
+                ClassScore {
+                    class_id: r.id,
+                    part: r.part,
+                    title: r.title,
                     score: None,
-                    submitters: submissions_count,
-                });
+                    submitters,
+                }
             }
-        }
+        })
+        .collect::<Vec<ClassScore>>();
 
         // この科目を履修している学生のtotal_score一覧を取得
         let mut rows = sqlx::query_scalar(concat!(
