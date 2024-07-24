@@ -752,18 +752,6 @@ async fn get_grades(
     let mut my_gpa = 0f64;
     let mut my_credits = 0;
     for course in registered_courses {
-        // 講義一覧の取得
-        let classes: Vec<Class> = sqlx::query_as(concat!(
-            "SELECT *",
-            " FROM `classes`",
-            " WHERE `course_id` = ?",
-            " ORDER BY `part` DESC",
-        ))
-        .bind(&course.id)
-        .fetch_all(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
-
         // 講義毎の成績計算処理
         let mut my_total_score = 0;
         let submissions_counts: HashMap<String, i64> = sqlx::query!(
@@ -772,7 +760,8 @@ async fn get_grades(
                 LEFT JOIN submissions AS s ON c.id = s.class_id
             WHERE
                 c.course_id = ?
-            GROUP BY c.id",
+            GROUP BY c.id
+            ORDER BY c.part DESC",
             course.id
         )
         .fetch_all(pool.as_ref())
