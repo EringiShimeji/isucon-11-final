@@ -4,7 +4,7 @@ version: "3"
 
 vars:
   # Frequently changed
-  SERVICES: mysql nginx
+  SERVICES: mysql nginx isucholar.rust
   REPO_DIR: /home/isucon/isucon-11-final
   SRC_DIR: /home/isucon/isucon-11-final/app/rust
 
