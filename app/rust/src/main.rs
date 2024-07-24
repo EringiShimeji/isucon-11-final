@@ -62,7 +62,7 @@ async fn main() -> std::io::Result<()> {
         .expect("failed to connect db");
 
     let mut session_key = b"trapnomura".to_vec();
-    session_key.resize(32, 0);
+    session_key.resize(64, 0);
 
     let server = actix_web::HttpServer::new(move || {
         let users_api = web::scope("/users")
