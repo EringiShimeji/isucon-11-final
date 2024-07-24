@@ -752,8 +752,8 @@ async fn get_grades(
     let mut my_gpa = 0f64;
     let mut my_credits = 0;
     for course in registered_courses {
-        let mut class_scores: HashMap<String, ClassScore> = sqlx::query!(
-            "SELECT c.id, c.part, c.title, s.score
+        let mut class_scores: HashMap<String, Option<u8>> = sqlx::query!(
+            "SELECT c.id, s.score
             FROM classes AS c
                 LEFT JOIN submissions AS s ON c.id = s.class_id
             WHERE
@@ -767,24 +767,13 @@ async fn get_grades(
         .await
         .map_err(SqlxError)?
         .into_iter()
-        .map(|r| {
-            (
-                r.id.clone(),
-                ClassScore {
-                    class_id: r.id,
-                    title: r.title,
-                    part: r.part,
-                    score: r.score.map(i64::from),
-                    submitters: 0,
-                },
-            )
-        })
+        .map(|r| (r.id.clone(), r.score))
         .collect();
 
         // 講義毎の成績計算処理
         let mut my_total_score = 0;
         let class_scores = sqlx::query!(
-            "SELECT c.id, COUNT(*) AS count
+            "SELECT c.id, c.part, c.title, COUNT(*) AS count
             FROM classes AS c
                 LEFT JOIN submissions AS s ON c.id = s.class_id
             WHERE
@@ -798,22 +787,23 @@ async fn get_grades(
         .map_err(SqlxError)?
         .into_iter()
         .map(|r| {
-            let c = class_scores.remove(&r.id).unwrap();
+            let c = class_scores.remove(&r.id);
 
-            if let Some(my_score) = c.score {
+            if let Some(Some(my_score)) = c {
+                let my_score = my_score as i64;
                 my_total_score += my_score;
                 ClassScore {
-                    class_id: c.class_id,
-                    part: c.part,
-                    title: c.title,
+                    class_id: r.id,
+                    part: r.part,
+                    title: r.title,
                     score: Some(my_score),
                     submitters: r.count,
                 }
             } else {
                 ClassScore {
-                    class_id: c.class_id,
-                    part: c.part,
-                    title: c.title,
+                    class_id: r.id,
+                    part: r.part,
+                    title: r.title,
                     score: None,
                     submitters: r.count,
                 }
